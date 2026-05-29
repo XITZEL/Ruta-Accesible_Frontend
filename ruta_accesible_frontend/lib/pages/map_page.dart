@@ -158,12 +158,13 @@ class _MapPageState extends State<MapPage> {
             markers: _markers,
           ),
 
+          // BUSCADOR
           Positioned(
             top: 50,
             left: 15,
             right: 15,
             child: Container(
-              height: 55, 
+              height: 55,
               padding: const EdgeInsets.symmetric(horizontal: 5),
               decoration: BoxDecoration(
                 color: _fondoGeneral,
@@ -175,6 +176,7 @@ class _MapPageState extends State<MapPage> {
                   IconButton(
                     icon: Icon(Icons.mic, color: _fondoBotones),
                     onPressed: () => _hablar("¿Qué lugar buscas?"),
+                    constraints: const BoxConstraints(minWidth: 40),
                   ),
                   Expanded(
                     child: TextField(
@@ -182,6 +184,7 @@ class _MapPageState extends State<MapPage> {
                       decoration: const InputDecoration(
                         border: InputBorder.none,
                         hintText: '¿A dónde vamos?',
+                        contentPadding: EdgeInsets.symmetric(horizontal: 10),
                       ),
                       onSubmitted: _buscar,
                       textInputAction: TextInputAction.search,
@@ -190,6 +193,7 @@ class _MapPageState extends State<MapPage> {
                   IconButton(
                     icon: Icon(Icons.search, color: _fondoBotones),
                     onPressed: () => _buscar(_searchController.text),
+                    constraints: const BoxConstraints(minWidth: 40),
                   ),
                 ],
               ),
@@ -207,15 +211,96 @@ class _MapPageState extends State<MapPage> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
-                  boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 5)],
+                  boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8)],
                 ),
-                child: Text(
-                  'Yendo a: ${widget.destinoNombre}',
-                  style: TextStyle(color: _fondoBotones, fontWeight: FontWeight.bold),
+                child: Row(
+                  children: [
+                    const Icon(Icons.location_on, color: Color(0xFF143278), size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        widget.destinoNombre!,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
+
+          // PANEL INFERIOR
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              padding: const EdgeInsets.all(15),
+              decoration: BoxDecoration(
+                color: _fondoGeneral,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+                boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10)],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _botonReportar(),
+                  const SizedBox(height: 15),
+                  GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                    childAspectRatio: 3.0,
+                    children: [
+                      _buildBotonCategoria(Icons.gavel, "Gobierno", const GobiernoPage()),
+                      _buildBotonCategoria(Icons.local_hospital, "Hospitales", const HospitalPage()),
+                      _buildBotonCategoria(Icons.shopping_cart, "Super", const SuperPage()),
+                      _buildBotonCategoria(Icons.account_balance, "Bancos", const BancoPage()),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _botonReportar() {
+    return ElevatedButton.icon(
+      onPressed: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const ReportePage(categoria: 'general')),
+      ),
+      icon: Icon(Icons.warning_amber_rounded, color: _textoBotones),
+      label: const Text('REPORTAR OBSTÁCULO', style: TextStyle(fontWeight: FontWeight.bold)),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.orange[900],
+        minimumSize: const Size(double.infinity, 50),
+      ),
+    );
+  }
+
+  Widget _buildBotonCategoria(IconData icono, String texto, Widget paginaDestino) {
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: _fondoBotones,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        padding: const EdgeInsets.symmetric(horizontal: 5),
+      ),
+      onPressed: () => _navegarACategoria(paginaDestino),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Row(
+          children: [
+            Icon(icono, size: 18, color: _textoBotones),
+            const SizedBox(width: 5),
+            Text(texto, style: TextStyle(fontSize: 12, color: _textoBotones, fontWeight: FontWeight.bold)),
+          ],
+        ),
       ),
     );
   }
