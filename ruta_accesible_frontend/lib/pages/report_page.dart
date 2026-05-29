@@ -238,6 +238,8 @@ class _ReportePageState extends State<ReportePage> {
           'descripcion': _desc.text.trim(),
           if (_aiPeligro != null) 'nivel_peligro': _aiPeligro,
         }),
+
+        
       );
 
       if (res.statusCode == 201 && mounted) {
