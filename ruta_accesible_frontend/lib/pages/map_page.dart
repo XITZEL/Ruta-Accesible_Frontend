@@ -168,6 +168,7 @@ class _MapPageState extends State<MapPage> {
             markers: _markers,
           ),
 
+          // BUSCADOR
           // 2. BARRA DE BÚSQUEDA FLOTANTE SUPERIOR
           Positioned(
             top: 50,
@@ -185,13 +186,7 @@ class _MapPageState extends State<MapPage> {
                 children: [
                   IconButton(
                     icon: Icon(Icons.mic, color: _fondoBotones),
-                    onPressed: () {
-                      // Simulación asistida para Web para que no congele tu mapa
-                      _searchController.text = "Hospital General";
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Simulación de comando de voz: "Hospital General"'))
-                      );
-                    },
+                    onPressed: () => _hablar("¿Qué lugar buscas?"),
                   ),
                   Expanded(
                     child: TextField(
@@ -208,6 +203,7 @@ class _MapPageState extends State<MapPage> {
                   IconButton(
                     icon: Icon(Icons.search, color: _fondoBotones),
                     onPressed: () => _buscar(_searchController.text),
+                    constraints: const BoxConstraints(minWidth: 40),
                   ),
                 ],
               ),
@@ -225,59 +221,16 @@ class _MapPageState extends State<MapPage> {
                 decoration: BoxDecoration(
                   color: _fondoBotones,
                   borderRadius: BorderRadius.circular(12),
-                  boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 5)],
+                  boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8)],
                 ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.navigation, color: Colors.white, size: 18),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Yendo a: ${widget.destinoNombre}',
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  'Yendo a: ${widget.destinoNombre}',
+                  style: TextStyle(color: _fondoBotones, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
-
-          // 4. LAS 4 OPCIONES DE NAVEGACIÓN RÁPIDA (Flotantes Inferiores)
-          Positioned(
-            bottom: 30,
-            left: 10,
-            right: 10,
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.95),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 15)],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildBotonMenu(Icons.account_balance, "Banco", const BancoPage()),
-                  _buildBotonMenu(Icons.shopping_cart, "Super", const SuperPage()),
-                  _buildBotonMenu(Icons.local_hospital, "Salud", const HospitalPage()),
-                  _buildBotonMenu(Icons.gavel, "Gobierno", const GobiernoPage()),
-                ],
-              ),
-            ),
-          ),
         ],
       ),
     );
   }
-
-  // Constructor interno estético para las 4 tarjetas del menú inferior
-  Widget _buildBotonMenu(IconData icono, String etiqueta, Widget paginaDestino) {
-    return InkWell(
-      onTap: () => _irACategoria(etiqueta, paginaDestino),
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircleAvatar(
+}
