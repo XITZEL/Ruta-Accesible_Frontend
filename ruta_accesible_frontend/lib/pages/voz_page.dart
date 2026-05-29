@@ -32,22 +32,28 @@ class _MapPageState extends State<MapPage> {
 
   void _procesarTexto(String texto) async {
     String cat = "";
-    if (texto.contains("hospital")) cat = "hospital";
-    else if (texto.contains("banco")) cat = "banco";
-    else if (texto.contains("gobierno")) cat = "gobierno";
+    if (texto.contains("hospital"))
+      cat = "hospital";
+    else if (texto.contains("banco"))
+      cat = "banco";
+    else if (texto.contains("gobierno"))
+      cat = "gobierno";
     else if (texto.contains("super")) cat = "super";
 
     if (cat.isNotEmpty) {
       Position pos = await Geolocator.getCurrentPosition();
-      final url = Uri.parse('https://ruta-accessible.vercel.app/api/places?lat=${pos.latitude}&lng=${pos.longitude}&category=$cat');
+      final url = Uri.parse(
+          'https://ruta-accesible.vercel.app/api/places?lat=${pos.latitude}&lng=${pos.longitude}&category=$cat');
       final res = await http.get(url);
       if (res.statusCode == 200) {
         final data = json.decode(res.body)['data'];
         if (data.isNotEmpty) {
           final lugar = data[0]; // Tomar el más cercano
-          Navigator.pushReplacement(context, MaterialPageRoute(
-            builder: (context) => MapPage(destino: LatLng(lugar['lat'], lugar['lng']))
-          ));
+          Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                  builder: (context) =>
+                      MapPage(destino: LatLng(lugar['lat'], lugar['lng']))));
         }
       }
     }
@@ -57,13 +63,21 @@ class _MapPageState extends State<MapPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: GoogleMap(
-        initialCameraPosition: CameraPosition(target: widget.destino ?? const LatLng(32.5149, -117.0382), zoom: 15),
-        markers: widget.destino != null ? {Marker(markerId: const MarkerId('dest'), position: widget.destino!)} : {},
+        initialCameraPosition: CameraPosition(
+            target: widget.destino ?? const LatLng(32.5149, -117.0382),
+            zoom: 15),
+        markers: widget.destino != null
+            ? {
+                Marker(
+                    markerId: const MarkerId('dest'), position: widget.destino!)
+              }
+            : {},
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: _isListening ? Colors.red : const Color(0xFF143278),
         onPressed: _iniciarBusquedaPorVoz,
-        child: Icon(_isListening ? Icons.mic_off : Icons.mic, color: Colors.white),
+        child:
+            Icon(_isListening ? Icons.mic_off : Icons.mic, color: Colors.white),
       ),
     );
   }
