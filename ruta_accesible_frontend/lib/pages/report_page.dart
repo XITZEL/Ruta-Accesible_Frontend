@@ -1,137 +1,85 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tts/flutter_tts.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'dart:convert';
 import 'dart:io';
+
+const _c = Color(0xFF143278);
+const _v = Color(0xFF1B8A4C);
 
 class ReportePage extends StatefulWidget {
   final String categoria;
   const ReportePage({super.key, required this.categoria});
-
   @override
   State<ReportePage> createState() => _ReportePageState();
 }
 
 class _ReportePageState extends State<ReportePage> {
-  bool _cargando = false;
-  String _mensajeEstado = "Presione el botón para analizar";
-  
-  // Colores de la paleta solicitada
-  final Color _fondoGris = const Color(0xFFF5F7FA);
-  final Color _textoOscuro = const Color(0xFF0A192F);
-  final Color _azulBotones = const Color(0xFF143278);
+  final FlutterTts _tts = FlutterTts();
+  final TextEditingController _desc = TextEditingController();
+  final ImagePicker _picker = ImagePicker();
+  String? _tipo, _fotoUrl, _aiDesc, _aiPeligro;
+  File? _fotoFile;
+  bool _enviando = false, _analizando = false;
+  double? _lat, _lng;
 
-  // Simulación de llamada a POST /api/ai/describe-photo
-  Future<void> _analizarImagen() async {
-    setState(() {
-      _cargando = true;
-      _mensajeEstado = "Analizando peligro con IA...";
-    });
-
-    // Aquí iría tu lógica real de cámara + multipart/form-data a /api/ai/describe-photo
-    await Future.delayed(const Duration(seconds: 3));
-
-    setState(() {
-      _cargando = false;
-      _mensajeEstado = "Peligro detectado: ${widget.categoria}. ¿Desea enviar reporte?";
-    });
+  @override
+  void initState() {
+    super.initState();
+    _tts.setLanguage("es-MX");
+    _obtenerLoc();
+    if (widget.categoria != 'general') _tipo = widget.categoria;
   }
 
-  // Envío final a POST /api/reports
-  Future<void> _enviarReporte() async {
-    setState(() => _cargando = true);
+  Future<void> _obtenerLoc() async {
+    Position p = await Geolocator.getCurrentPosition();
+    setState(() { _lat = p.latitude; _lng = p.longitude; });
+  }
 
-    final body = {
-      "userId": "usuario_anonimo_123", // Cambiar por auth real
-      "tipo_barrera": widget.categoria,
-      "descripcion": "Obstáculo detectado automáticamente",
-      "metodo_ingreso": "IA",
-      "lat": 32.5149,
-      "lng": -117.0382,
-    };
-
-    try {
-      final response = await http.post(
-        Uri.parse('https://ruta-accesible.vercel.app/api/reports'),
-        headers: {"Content-Type": "application/json"},
-        body: json.encode(body),
-      );
-
-      if (response.statusCode == 201 && mounted) {
-        _mostrarExito();
-      }
-    } catch (e) {
-      debugPrint(e.toString());
-    } finally {
-      if (mounted) setState(() => _cargando = false);
+  Future<void> _tomarFoto() async {
+    final XFile? f = await _picker.pickImage(source: ImageSource.camera);
+    if (f == null) return;
+    setState(() { _fotoFile = File(f.path); _analizando = true; });
+    
+    var req = http.MultipartRequest('POST', Uri.parse('https://ruta-accesible.vercel.app/api/ai/describe-photo'));
+    req.files.add(await http.MultipartFile.fromPath('photo', f.path, contentType: MediaType('image', 'jpeg')));
+    var res = await req.send();
+    if (res.statusCode == 200) {
+      var d = json.decode(await res.stream.bytesToString())['data'];
+      setState(() { _tipo = d['tipo_barrera']; _aiDesc = d['descripcion']; _aiPeligro = d['nivel_peligro']; _desc.text = _aiDesc ?? ''; });
     }
+    setState(() => _analizando = false);
   }
 
-  void _mostrarExito() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("¡Reporte enviado!"),
-        content: const Text("Gracias por ayudar a mejorar la ciudad."),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Aceptar"))
-        ],
-      ),
-    );
+  Future<void> _enviar() async {
+    if (_tipo == null || _desc.text.isEmpty) return;
+    setState(() => _enviando = true);
+    
+    var body = {'userId': 'user_${DateTime.now().millisecondsSinceEpoch}', 'lat': _lat, 'lng': _lng, 'tipo_barrera': _tipo, 'descripcion': _desc.text};
+    var res = await http.post(Uri.parse('https://ruta-accesible.vercel.app/api/reports'), 
+        headers: {'Content-Type': 'application/json'}, body: json.encode(body));
+    
+    if (res.statusCode == 201 && mounted) Navigator.pop(context);
+    setState(() => _enviando = false);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _fondoGris,
-      appBar: AppBar(
-        title: const Text("Nuevo Reporte", style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: _azulBotones,
-        foregroundColor: Colors.white,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          children: [
-            Text(
-              "Reportar: ${widget.categoria.toUpperCase()}",
-              style: TextStyle(fontSize: 22, color: _textoOscuro, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 30),
-            
-            // Área de Feedback visual grande
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15)),
-              child: Center(
-                child: _cargando 
-                  ? const CircularProgressIndicator() 
-                  : Text(_mensajeEstado, textAlign: TextAlign.center, style: TextStyle(fontSize: 18, color: _textoOscuro)),
-              ),
-            ),
-            const Spacer(),
-
-            // Botones grandes y accesibles
-            SizedBox(
-              width: double.infinity,
-              height: 65,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: _azulBotones),
-                onPressed: _cargando ? null : _analizarImagen,
-                child: const Text("TOMAR FOTO Y ANALIZAR", style: TextStyle(fontSize: 18, color: Colors.white)),
-              ),
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              height: 65,
-              child: OutlinedButton(
-                onPressed: _cargando ? null : _enviarReporte,
-                child: Text("CONFIRMAR Y ENVIAR", style: TextStyle(fontSize: 18, color: _azulBotones)),
-              ),
-            ),
-          ],
-        ),
-      ),
+      appBar: AppBar(title: const Text('NUEVO REPORTE')),
+      body: ListView(padding: const EdgeInsets.all(20), children: [
+        GestureDetector(onTap: _tomarFoto, child: Container(height: 150, color: Colors.grey[200], 
+            child: _analizando ? const Center(child: CircularProgressIndicator()) : const Icon(Icons.camera_alt, size: 50))),
+        Wrap(spacing: 10, children: ['bache', 'rampa_bloqueada', 'banqueta', 'semaforo'].map((t) => ChoiceChip(
+            label: Text(t), selected: _tipo == t, onSelected: (s) => setState(() => _tipo = t))).toList()),
+        TextField(controller: _desc, maxLines: 3, decoration: const InputDecoration(hintText: 'Descripción')),
+        const SizedBox(height: 20),
+        ElevatedButton(onPressed: _enviando ? null : _enviar, style: ElevatedButton.styleFrom(backgroundColor: _v), 
+            child: _enviando ? const CircularProgressIndicator() : const Text('ENVIAR'))
+      ]),
     );
   }
 }
