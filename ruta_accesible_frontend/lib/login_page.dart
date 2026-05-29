@@ -35,7 +35,7 @@ class LoginPage extends StatelessWidget {
                 descripcion: 'Sugerido para adultos mayores y personas con problemas motrices',
                 colorBoton: colorBoton,
                 colorTexto: colorTextoPrimario,
-                esAsistido: true,
+                esAsistido: false,
                 onPressed: () {
                   Navigator.pushReplacement(
                     context,
