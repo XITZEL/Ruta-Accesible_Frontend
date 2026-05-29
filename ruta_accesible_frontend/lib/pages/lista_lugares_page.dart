@@ -38,6 +38,7 @@ class _ListaLugaresPageState extends State<ListaLugaresPage> {
         }
       }
     } catch (e) {
+      print('Error al cargar lugares: $e');
       if (mounted) setState(() => _cargando = false);
     }
   }
