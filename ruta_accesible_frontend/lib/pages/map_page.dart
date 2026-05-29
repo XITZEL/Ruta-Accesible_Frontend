@@ -35,7 +35,6 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
   final stt.SpeechToText _speech = stt.SpeechToText();
   final TextEditingController _searchCtrl = TextEditingController();
   late AnimationController _micAnimCtrl;
-  late Animation<double> _micPulse;
 
   Set<Polyline> _polylines = {};
   Set<Marker> _markers = {};
@@ -43,7 +42,6 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
   int _pasoActual = 0;
   bool _trazandoRuta = false;
   bool _escuchando = false;
-  bool _permisosListos = false;
 
   final List<_Categoria> _categorias = [
     _Categoria(label: 'Salud', icono: Icons.local_hospital_rounded),
@@ -56,14 +54,12 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
   void initState() {
     super.initState();
     _micAnimCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
-    _micPulse = Tween<double>(begin: 1.0, end: 1.2).animate(CurvedAnimation(parent: _micAnimCtrl, curve: Curves.easeInOut));
     _tts.setLanguage('es-MX');
     _solicitarPermisos();
   }
 
   Future<void> _solicitarPermisos() async {
-    final statuses = await [Permission.location, Permission.microphone].request();
-    setState(() => _permisosListos = (statuses[Permission.location]?.isGranted ?? false));
+    await [Permission.location, Permission.microphone].request();
   }
 
   Future<void> _hablar(String texto) async => await _tts.speak(texto);
@@ -86,46 +82,46 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
     if (query.trim().isEmpty) return;
     try {
       final pos = await Geolocator.getCurrentPosition();
+      // Asegúrate de tener tu API KEY configurada en la variable de entorno o reemplázala aquí
       final url = Uri.parse('https://maps.googleapis.com/maps/api/place/textsearch/json?query=${Uri.encodeComponent(query)}&location=${pos.latitude},${pos.longitude}&key=${const String.fromEnvironment('GOOGLE_MAPS_API_KEY')}');
       final res = await http.get(url);
       if (res.statusCode == 200) {
         final data = json.decode(res.body);
-        final loc = data['results'][0]['geometry']['location'];
-        await _trazarRuta(LatLng(loc['lat'], loc['lng']), nombre: data['results'][0]['name']);
+        if (data['results'] != null && data['results'].isNotEmpty) {
+          final loc = data['results'][0]['geometry']['location'];
+          await _trazarRuta(LatLng(loc['lat'], loc['lng']), nombre: data['results'][0]['name']);
+        }
       }
-    } catch (e) { debugPrint('$e'); }
+    } catch (e) { debugPrint('Error búsqueda: $e'); }
   }
 
   Future<void> _trazarRuta(LatLng destino, {String? nombre}) async {
     setState(() => _trazandoRuta = true);
-    final pos = await Geolocator.getCurrentPosition();
-    final url = Uri.parse('https://ruta-accesible.vercel.app/api/route?originLat=${pos.latitude}&originLng=${pos.longitude}&destLat=${destino.latitude}&destLng=${destino.longitude}');
-    final res = await http.get(url);
-    if (res.statusCode == 200) {
-      final data = json.decode(res.body);
-      final pts = PolylinePoints().decodePolyline(data['data']['points']);
-      setState(() {
-        _polylines = {Polyline(polylineId: const PolylineId('r'), points: pts.map((e) => LatLng(e.latitude, e.longitude)).toList(), color: _fondoBotones, width: 6)};
-        _instrucciones = (data['data']['steps'] as List).map((s) => s['instructions'] as String).toList();
-      });
-    }
-    setState(() => _trazandoRuta = false);
-  }
+    try {
+      final pos = await Geolocator.getCurrentPosition();
+      final url = Uri.parse('https://ruta-accesible.vercel.app/api/route?originLat=${pos.latitude}&originLng=${pos.longitude}&destLat=${destino.latitude}&destLng=${destino.longitude}');
+      final res = await http.get(url);
+      
+      if (res.statusCode == 200) {
+        final data = json.decode(res.body);
+        final pts = PolylinePoints().decodePolyline(data['data']['points']);
+        
+        setState(() {
+          _polylines = {Polyline(polylineId: const PolylineId('r'), points: pts.map((e) => LatLng(e.latitude, e.longitude)).toList(), color: _fondoBotones, width: 6)};
+          _markers = {Marker(markerId: const MarkerId('dest'), position: destino, infoWindow: InfoWindow(title: nombre))};
+          _instrucciones = (data['data']['steps'] as List).map((s) => s['instructions'] as String).toList();
+          _pasoActual = 0;
+        });
 
-  // --- BOTÓN AGREGADO ---
-  Widget _construirBotonCentrar() {
-    return Positioned(
-      right: 15,
-      bottom: 270,
-      child: FloatingActionButton(
-        backgroundColor: Colors.white,
-        onPressed: () async {
-          Position pos = await Geolocator.getCurrentPosition();
-          mapController?.animateCamera(CameraUpdate.newLatLngZoom(LatLng(pos.latitude, pos.longitude), 17));
-        },
-        child: const Icon(Icons.my_location, color: _fondoBotones),
-      ),
-    );
+        mapController?.animateCamera(CameraUpdate.newLatLngBounds(
+          LatLngBounds(
+            southwest: LatLng(min(pos.latitude, destino.latitude), min(pos.longitude, destino.longitude)),
+            northeast: LatLng(max(pos.latitude, destino.latitude), max(pos.longitude, destino.longitude)),
+          ), 70
+        ));
+      }
+    } catch (e) { debugPrint('Error ruta: $e'); }
+    setState(() => _trazandoRuta = false);
   }
 
   @override
@@ -133,11 +129,25 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
     return Scaffold(
       backgroundColor: _fondoGeneral,
       body: Stack(children: [
-        GoogleMap(onMapCreated: (c) => mapController = c, initialCameraPosition: const CameraPosition(target: LatLng(32.5149, -117.0382), zoom: 16), polylines: _polylines, markers: _markers),
+        GoogleMap(
+          onMapCreated: (c) => mapController = c,
+          initialCameraPosition: const CameraPosition(target: LatLng(32.5149, -117.0382), zoom: 16),
+          polylines: _polylines,
+          markers: _markers,
+          myLocationEnabled: true,
+          myLocationButtonEnabled: false,
+        ),
         Positioned(top: 50, left: 15, right: 15, child: _construirBarraBusqueda()),
         if (_instrucciones.isNotEmpty) Positioned(bottom: 150, left: 15, right: 15, child: _construirPanelInstrucciones()),
         Positioned(bottom: 0, left: 0, right: 0, child: _construirHojaInferior()),
-        _construirBotonCentrar(), // <--- AQUÍ SE AGREGA EL BOTÓN
+        Positioned(right: 15, bottom: 270, child: FloatingActionButton(
+          backgroundColor: Colors.white,
+          onPressed: () async {
+            Position pos = await Geolocator.getCurrentPosition();
+            mapController?.animateCamera(CameraUpdate.newLatLngZoom(LatLng(pos.latitude, pos.longitude), 17));
+          },
+          child: const Icon(Icons.my_location, color: _fondoBotones),
+        )),
       ]),
     );
   }
