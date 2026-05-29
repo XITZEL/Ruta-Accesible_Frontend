@@ -55,7 +55,11 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
     super.initState();
     _micAnimCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
     _tts.setLanguage('es-MX');
-    _solicitarPermisos();
+    _solicitarPermisos().then((_) {
+      if (widget.destino != null) {
+        _trazarRuta(widget.destino!, nombre: widget.destinoNombre);
+      }
+    });
   }
 
   Future<void> _solicitarPermisos() async {
@@ -82,15 +86,19 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
     if (query.trim().isEmpty) return;
     try {
       final pos = await Geolocator.getCurrentPosition();
-      // Asegúrate de tener tu API KEY configurada en la variable de entorno o reemplázala aquí
-      final url = Uri.parse('https://maps.googleapis.com/maps/api/place/textsearch/json?query=${Uri.encodeComponent(query)}&location=${pos.latitude},${pos.longitude}&key=${const String.fromEnvironment('GOOGLE_MAPS_API_KEY')}');
+      final url = Uri.parse(
+        'https://ruta-accesible.vercel.app/api/search?q=${Uri.encodeComponent(query)}&lat=${pos.latitude}&lng=${pos.longitude}',
+      );
       final res = await http.get(url);
       if (res.statusCode == 200) {
         final data = json.decode(res.body);
-        if (data['results'] != null && data['results'].isNotEmpty) {
-          final loc = data['results'][0]['geometry']['location'];
-          await _trazarRuta(LatLng(loc['lat'], loc['lng']), nombre: data['results'][0]['name']);
-        }
+        final List results = data['data'] ?? [];
+        if (results.isEmpty) return;
+        final lugar = results[0];
+        await _trazarRuta(
+          LatLng((lugar['lat'] as num).toDouble(), (lugar['lng'] as num).toDouble()),
+          nombre: lugar['name'],
+        );
       }
     } catch (e) { debugPrint('Error búsqueda: $e'); }
   }
@@ -101,23 +109,21 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
       final pos = await Geolocator.getCurrentPosition();
       final url = Uri.parse('https://ruta-accesible.vercel.app/api/route?originLat=${pos.latitude}&originLng=${pos.longitude}&destLat=${destino.latitude}&destLng=${destino.longitude}');
       final res = await http.get(url);
-      
       if (res.statusCode == 200) {
         final data = json.decode(res.body);
         final pts = PolylinePoints().decodePolyline(data['data']['points']);
-        
+        final steps = data['data']['steps'] as List? ?? [];
         setState(() {
           _polylines = {Polyline(polylineId: const PolylineId('r'), points: pts.map((e) => LatLng(e.latitude, e.longitude)).toList(), color: _fondoBotones, width: 6)};
-          _markers = {Marker(markerId: const MarkerId('dest'), position: destino, infoWindow: InfoWindow(title: nombre))};
-          _instrucciones = (data['data']['steps'] as List).map((s) => s['instructions'] as String).toList();
+          _markers = {Marker(markerId: const MarkerId('dest'), position: destino, infoWindow: InfoWindow(title: nombre ?? 'Destino'))};
+          _instrucciones = steps.map((s) => s['instructions'] as String).toList();
           _pasoActual = 0;
         });
-
         mapController?.animateCamera(CameraUpdate.newLatLngBounds(
           LatLngBounds(
             southwest: LatLng(min(pos.latitude, destino.latitude), min(pos.longitude, destino.longitude)),
             northeast: LatLng(max(pos.latitude, destino.latitude), max(pos.longitude, destino.longitude)),
-          ), 70
+          ), 70,
         ));
       }
     } catch (e) { debugPrint('Error ruta: $e'); }

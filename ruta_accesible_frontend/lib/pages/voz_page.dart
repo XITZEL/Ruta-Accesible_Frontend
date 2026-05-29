@@ -32,9 +32,9 @@ class _MapPageState extends State<MapPage> {
 
   void _procesarTexto(String texto) async {
     String cat = "";
-    if (texto.contains("hospital"))
+    if (texto.contains("hospital")) {
       cat = "hospital";
-    else if (texto.contains("banco"))
+    } else if (texto.contains("banco"))
       cat = "banco";
     else if (texto.contains("gobierno"))
       cat = "gobierno";
