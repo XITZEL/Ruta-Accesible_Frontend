@@ -25,17 +25,11 @@ class _MapPageState extends State<MapPage> {
   GoogleMapController? mapController;
   final LatLng _centroDefault = const LatLng(32.5149, -117.0382);
   final FlutterTts _tts = FlutterTts();
-<<<<<<< Updated upstream
-  final SpeechToText _speech = SpeechToText();
-  bool _isListening = false;
-  
-=======
   final TextEditingController _searchController = TextEditingController();
 
   Set<Polyline> _polylines = {};
   Set<Marker> _markers = {};
 
->>>>>>> Stashed changes
   final Color _fondoGeneral = const Color(0xFFF5F7FA);
   final Color _fondoBotones = const Color(0xFF143278);
   final Color _textoBotones = const Color(0xFFFFFFFF);
@@ -124,20 +118,6 @@ class _MapPageState extends State<MapPage> {
     }
   }
 
-<<<<<<< Updated upstream
-  void _procesarComandoVoz(String texto) {
-    Widget? destino;
-    if (texto.contains("gobierno")) destino = const GobiernoPage();
-    else if (texto.contains("hospital")) destino = const HospitalPage();
-    else if (texto.contains("banco")) destino = const BancoPage();
-    else if (texto.contains("super")) destino = const SuperPage();
-    
-    if (destino != null) {
-      Navigator.push(context, MaterialPageRoute(builder: (context) => destino!));
-    } else {
-      _hablar("No encontré esa categoría.");
-    }
-=======
   void _buscar(String texto) {
     final t = texto.trim();
     if (t.isEmpty) return;
@@ -157,7 +137,6 @@ class _MapPageState extends State<MapPage> {
 
   void _navegarACategoria(Widget paginaDestino) {
     Navigator.push(context, MaterialPageRoute(builder: (context) => paginaDestino));
->>>>>>> Stashed changes
   }
 
   @override
@@ -179,39 +158,23 @@ class _MapPageState extends State<MapPage> {
             markers: _markers,
           ),
 
-<<<<<<< Updated upstream
-          // BUSCADOR BLINDADO CONTRA OVERFLOW
-=======
-          // BUSCADOR
->>>>>>> Stashed changes
           Positioned(
             top: 50,
             left: 15,
             right: 15,
             child: Container(
-              height: 55, // Altura fija para evitar saltos
+              height: 55, 
               padding: const EdgeInsets.symmetric(horizontal: 5),
               decoration: BoxDecoration(
                 color: _fondoGeneral,
                 borderRadius: BorderRadius.circular(15),
-<<<<<<< Updated upstream
-                boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 5)]
-=======
                 boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10)],
->>>>>>> Stashed changes
               ),
               child: Row(
                 children: [
                   IconButton(
-<<<<<<< Updated upstream
-                    icon: Icon(_isListening ? Icons.mic_off : Icons.mic, 
-                               color: _isListening ? Colors.red : _fondoBotones), 
-                    onPressed: _escucharBusqueda,
-                    constraints: const BoxConstraints(minWidth: 40), // Tamaño fijo
-=======
                     icon: Icon(Icons.mic, color: _fondoBotones),
                     onPressed: () => _hablar("¿Qué lugar buscas?"),
->>>>>>> Stashed changes
                   ),
                   Expanded(
                     child: TextField(
@@ -219,12 +182,6 @@ class _MapPageState extends State<MapPage> {
                       decoration: const InputDecoration(
                         border: InputBorder.none,
                         hintText: '¿A dónde vamos?',
-<<<<<<< Updated upstream
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 10),
-                        hintStyle: TextStyle(color: _textoPrincipal.withOpacity(0.5))
-                      )
-                    )
-=======
                       ),
                       onSubmitted: _buscar,
                       textInputAction: TextInputAction.search,
@@ -233,7 +190,6 @@ class _MapPageState extends State<MapPage> {
                   IconButton(
                     icon: Icon(Icons.search, color: _fondoBotones),
                     onPressed: () => _buscar(_searchController.text),
->>>>>>> Stashed changes
                   ),
                 ],
               ),
@@ -251,107 +207,15 @@ class _MapPageState extends State<MapPage> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
-                  boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8)],
+                  boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 5)],
                 ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.location_on, color: Color(0xFF143278), size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        widget.destinoNombre!,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  'Yendo a: ${widget.destinoNombre}',
+                  style: TextStyle(color: _fondoBotones, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
-
-          // PANEL INFERIOR
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              padding: const EdgeInsets.all(15),
-              decoration: BoxDecoration(
-                color: _fondoGeneral,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-                boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10)],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _botonReportar(),
-                  const SizedBox(height: 15),
-                  GridView.count(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10,
-                    childAspectRatio: 3.0, // Aumentado ligeramente para mejor ajuste
-                    children: [
-                      _buildBotonCategoria(Icons.gavel, "Gobierno", const GobiernoPage()),
-                      _buildBotonCategoria(Icons.local_hospital, "Hospitales", const HospitalPage()),
-                      _buildBotonCategoria(Icons.shopping_cart, "Super", const SuperPage()),
-                      _buildBotonCategoria(Icons.account_balance, "Bancos", const BancoPage()),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
         ],
-      ),
-    );
-  }
-
-  Widget _botonReportar() {
-    return ElevatedButton.icon(
-      onPressed: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const ReportePage(categoria: 'general')),
-      ),
-      icon: Icon(Icons.warning_amber_rounded, color: _textoBotones),
-      label: const Text('REPORTAR OBSTÁCULO', style: TextStyle(fontWeight: FontWeight.bold)),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.orange[900],
-        minimumSize: const Size(double.infinity, 50),
-      ),
-    );
-  }
-
-  Widget _buildBotonCategoria(IconData icono, String texto, Widget paginaDestino) {
-    return ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: _fondoBotones,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        padding: const EdgeInsets.symmetric(horizontal: 5),
-      ),
-<<<<<<< Updated upstream
-      onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => paginaDestino)),
-      child: FittedBox( // Esto evita que el texto se salga del botón
-        fit: BoxFit.scaleDown,
-        child: Row(
-          children: [
-            Icon(icono, size: 18, color: _textoBotones),
-            const SizedBox(width: 5),
-            Text(texto, style: TextStyle(fontSize: 12, color: _textoBotones, fontWeight: FontWeight.bold)),
-          ],
-        ),
-=======
-      onPressed: () => _navegarACategoria(paginaDestino),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icono, size: 20, color: _textoBotones),
-          const SizedBox(width: 5),
-          Text(texto, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: _textoBotones)),
-        ],
->>>>>>> Stashed changes
       ),
     );
   }
