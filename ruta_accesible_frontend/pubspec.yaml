@@ -9,9 +9,16 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+<<<<<<< Updated upstream
   
   # Navegación y Mapas
   google_maps_flutter: ^2.9.0
+=======
+  http: ^1.2.0
+  google_maps_flutter: ^2.9.0
+  geolocator: ^11.0.0
+  flutter_tts: ^4.0.2
+>>>>>>> Stashed changes
   flutter_polyline_points: ^2.0.0
   geolocator: ^13.0.1
   
@@ -22,9 +29,13 @@ dependencies:
   flutter_tts: ^4.0.2
   speech_to_text: ^7.0.0
   flutter_dotenv: ^5.1.0
+<<<<<<< Updated upstream
   
   # Iconos y Diseño
   cupertino_icons: ^1.0.6
+=======
+  speech_to_text: ^7.0.0
+>>>>>>> Stashed changes
 
 dev_dependencies:
   flutter_test:
@@ -32,4 +43,10 @@ dev_dependencies:
   flutter_lints: ^4.0.0
 
 flutter:
+<<<<<<< Updated upstream
   uses-material-design: true
+=======
+  uses-material-design: true
+  assets:
+    - .env
+>>>>>>> Stashed changes
