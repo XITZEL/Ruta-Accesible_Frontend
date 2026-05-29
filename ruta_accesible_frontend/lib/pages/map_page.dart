@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:flutter_tts/flutter_tts.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+
+// Tus páginas modulares importadas
 import 'report_page.dart';
 import 'lista_lugares_page.dart';
 import 'gobierno_page.dart';
@@ -24,20 +25,24 @@ class MapPage extends StatefulWidget {
 class _MapPageState extends State<MapPage> {
   GoogleMapController? mapController;
   final LatLng _centroDefault = const LatLng(32.5149, -117.0382);
-  final FlutterTts _tts = FlutterTts();
   final TextEditingController _searchController = TextEditingController();
 
   Set<Polyline> _polylines = {};
   Set<Marker> _markers = {};
 
+  // Paleta estética original
   final Color _fondoGeneral = const Color(0xFFF5F7FA);
   final Color _fondoBotones = const Color(0xFF143278);
-  final Color _textoBotones = const Color(0xFFFFFFFF);
 
   @override
   void initState() {
     super.initState();
-    _configurarTTS();
+    // Si viene un destino desde otra pantalla al cargar, traza la ruta de inmediato
+    if (widget.destino != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _trazarRuta(widget.destino!);
+      });
+    }
   }
 
   @override
@@ -46,33 +51,31 @@ class _MapPageState extends State<MapPage> {
     super.dispose();
   }
 
-  void _configurarTTS() async {
-    await _tts.setLanguage("es-MX");
-    await _tts.setSpeechRate(0.45);
-  }
-
-  Future<void> _hablar(String texto) async => await _tts.speak(texto);
-
+  // LÓGICA DE RUTEO: Decodifica de forma segura y dibuja la polilínea azul
   Future<void> _trazarRuta(LatLng destino) async {
     try {
-      Position pos = await Geolocator.getCurrentPosition();
+      Position pos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high
+      );
       final inicio = LatLng(pos.latitude, pos.longitude);
 
       final url = Uri.parse(
-          'https://ruta-accesible.vercel.app/api/route?originLat=${inicio.latitude}&originLng=${inicio.longitude}&destLat=${destino.latitude}&destLng=${destino.longitude}');
+          'https://vercel.app{inicio.latitude}&originLng=${inicio.longitude}&destLat=${destino.latitude}&destLng=${destino.longitude}');
       final response = await http.get(url);
-
-      if (!mounted) return;
 
       List<LatLng> coords = [inicio, destino];
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final encoded = data['data']['points'] as String? ?? '';
-        if (encoded.isNotEmpty) {
-          coords = PolylinePoints()
-              .decodePolyline(encoded)
-              .map((p) => LatLng(p.latitude, p.longitude))
-              .toList();
+        final Map<String, dynamic> data = Map<String, dynamic>.from(json.decode(response.body));
+        if (data.containsKey('data') && data['data'] != null) {
+          final Map<String, dynamic> dataRoute = Map<String, dynamic>.from(data['data']);
+          final encoded = dataRoute['points'] as String? ?? '';
+          
+          if (encoded.isNotEmpty) {
+            coords = PolylinePoints()
+                .decodePolyline(encoded)
+                .map((p) => LatLng(p.latitude, p.longitude))
+                .toList();
+          }
         }
       }
 
@@ -81,11 +84,17 @@ class _MapPageState extends State<MapPage> {
           Polyline(
             polylineId: const PolylineId('ruta'),
             points: coords,
-            color: const Color(0xFF143278),
-            width: 5,
+            color: const Color(0xFF143278), // Línea azul de ruta
+            width: 6,
           )
         };
         _markers = {
+          Marker(
+            markerId: const MarkerId('inicio'),
+            position: inicio,
+            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+            infoWindow: const InfoWindow(title: 'Mi Ubicación'),
+          ),
           Marker(
             markerId: const MarkerId('destino'),
             position: destino,
@@ -94,10 +103,7 @@ class _MapPageState extends State<MapPage> {
         };
       });
 
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        mapController?.showMarkerInfoWindow(const MarkerId('destino'));
-      });
-
+      // Mover la cámara para encuadrar la ruta
       mapController?.animateCamera(
         CameraUpdate.newLatLngBounds(
           LatLngBounds(
@@ -110,14 +116,15 @@ class _MapPageState extends State<MapPage> {
               inicio.longitude > destino.longitude ? inicio.longitude : destino.longitude,
             ),
           ),
-          80,
+          90, // Margen de padding
         ),
       );
     } catch (e) {
-      print('Error trazando ruta: $e');
+      print('Error en ruteo: $e');
     }
   }
 
+  // Búsqueda general de texto
   void _buscar(String texto) {
     final t = texto.trim();
     if (t.isEmpty) return;
@@ -135,8 +142,9 @@ class _MapPageState extends State<MapPage> {
     );
   }
 
-  void _navegarACategoria(Widget paginaDestino) {
-    Navigator.push(context, MaterialPageRoute(builder: (context) => paginaDestino));
+  // Navegación rápida modular a las vistas de accesibilidad
+  void _irACategoria(String tipo, Widget pagina) {
+    Navigator.push(context, MaterialPageRoute(builder: (context) => pagina));
   }
 
   @override
@@ -145,6 +153,7 @@ class _MapPageState extends State<MapPage> {
       backgroundColor: _fondoGeneral,
       body: Stack(
         children: [
+          // 1. EL MAPA DE GOOGLE
           GoogleMap(
             onMapCreated: (controller) {
               mapController = controller;
@@ -152,21 +161,23 @@ class _MapPageState extends State<MapPage> {
                 _trazarRuta(widget.destino!);
               }
             },
-            initialCameraPosition: CameraPosition(target: _centroDefault, zoom: 16.0),
+            initialCameraPosition: CameraPosition(target: _centroDefault, zoom: 15.0),
             myLocationEnabled: true,
+            myLocationButtonEnabled: false, // Desactivado para no estorbar el diseño
             polylines: _polylines,
             markers: _markers,
           ),
 
+          // 2. BARRA DE BÚSQUEDA FLOTANTE SUPERIOR
           Positioned(
             top: 50,
             left: 15,
             right: 15,
             child: Container(
-              height: 55, 
+              height: 55,
               padding: const EdgeInsets.symmetric(horizontal: 5),
               decoration: BoxDecoration(
-                color: _fondoGeneral,
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(15),
                 boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10)],
               ),
@@ -174,7 +185,13 @@ class _MapPageState extends State<MapPage> {
                 children: [
                   IconButton(
                     icon: Icon(Icons.mic, color: _fondoBotones),
-                    onPressed: () => _hablar("¿Qué lugar buscas?"),
+                    onPressed: () {
+                      // Simulación asistida para Web para que no congele tu mapa
+                      _searchController.text = "Hospital General";
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Simulación de comando de voz: "Hospital General"'))
+                      );
+                    },
                   ),
                   Expanded(
                     child: TextField(
@@ -182,6 +199,7 @@ class _MapPageState extends State<MapPage> {
                       decoration: const InputDecoration(
                         border: InputBorder.none,
                         hintText: '¿A dónde vamos?',
+                        contentPadding: EdgeInsets.symmetric(horizontal: 10),
                       ),
                       onSubmitted: _buscar,
                       textInputAction: TextInputAction.search,
@@ -196,27 +214,70 @@ class _MapPageState extends State<MapPage> {
             ),
           ),
 
-          // BANNER DE DESTINO
+          // 3. BANNER DE INDICACIÓN DE DESTINO ACTIVO
           if (widget.destinoNombre != null)
             Positioned(
               top: 120,
               left: 15,
               right: 15,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: _fondoBotones,
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 5)],
                 ),
-                child: Text(
-                  'Yendo a: ${widget.destinoNombre}',
-                  style: TextStyle(color: _fondoBotones, fontWeight: FontWeight.bold),
+                child: Row(
+                  children: [
+                    const Icon(Icons.navigation, color: Colors.white, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Yendo a: ${widget.destinoNombre}',
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
+
+          // 4. LAS 4 OPCIONES DE NAVEGACIÓN RÁPIDA (Flotantes Inferiores)
+          Positioned(
+            bottom: 30,
+            left: 10,
+            right: 10,
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.95),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 15)],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildBotonMenu(Icons.account_balance, "Banco", const BancoPage()),
+                  _buildBotonMenu(Icons.shopping_cart, "Super", const SuperPage()),
+                  _buildBotonMenu(Icons.local_hospital, "Salud", const HospitalPage()),
+                  _buildBotonMenu(Icons.gavel, "Gobierno", const GobiernoPage()),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
-}
+
+  // Constructor interno estético para las 4 tarjetas del menú inferior
+  Widget _buildBotonMenu(IconData icono, String etiqueta, Widget paginaDestino) {
+    return InkWell(
+      onTap: () => _irACategoria(etiqueta, paginaDestino),
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircleAvatar(
