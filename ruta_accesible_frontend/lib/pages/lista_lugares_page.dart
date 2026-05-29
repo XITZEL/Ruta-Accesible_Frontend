@@ -25,7 +25,7 @@ class _ListaLugaresPageState extends State<ListaLugaresPage> {
   Future<void> _fetchData() async {
     try {
       Position pos = await Geolocator.getCurrentPosition();
-      final url = Uri.parse('https://ruta-accessible.vercel.app/api/places?lat=${pos.latitude}&lng=${pos.longitude}&category=${widget.categoria}');
+      final url = Uri.parse('https://ruta-accesible.vercel.app/api/places?lat=${pos.latitude}&lng=${pos.longitude}&category=${widget.categoria}');
       
       final response = await http.get(url);
       if (response.statusCode == 200) {
