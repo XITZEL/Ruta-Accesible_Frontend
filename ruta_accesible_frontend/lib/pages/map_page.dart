@@ -58,10 +58,9 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
     _micAnimCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
     _micPulse = Tween<double>(begin: 1.0, end: 1.2).animate(CurvedAnimation(parent: _micAnimCtrl, curve: Curves.easeInOut));
     _tts.setLanguage('es-MX');
-    _solicitarPermisos(); // <--- Aquí ya existe
+    _solicitarPermisos();
   }
 
-  // --- FUNCIÓN RECUPERADA ---
   Future<void> _solicitarPermisos() async {
     final statuses = await [Permission.location, Permission.microphone].request();
     setState(() => _permisosListos = (statuses[Permission.location]?.isGranted ?? false));
@@ -69,7 +68,6 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
 
   Future<void> _hablar(String texto) async => await _tts.speak(texto);
 
-  // --- BÚSQUEDA Y RUTEO ---
   Future<void> _toggleVoz() async {
     if (_escuchando) { await _speech.stop(); setState(() => _escuchando = false); return; }
     if (await _speech.initialize()) {
@@ -114,6 +112,22 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
     setState(() => _trazandoRuta = false);
   }
 
+  // --- BOTÓN AGREGADO ---
+  Widget _construirBotonCentrar() {
+    return Positioned(
+      right: 15,
+      bottom: 270,
+      child: FloatingActionButton(
+        backgroundColor: Colors.white,
+        onPressed: () async {
+          Position pos = await Geolocator.getCurrentPosition();
+          mapController?.animateCamera(CameraUpdate.newLatLngZoom(LatLng(pos.latitude, pos.longitude), 17));
+        },
+        child: const Icon(Icons.my_location, color: _fondoBotones),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -123,6 +137,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
         Positioned(top: 50, left: 15, right: 15, child: _construirBarraBusqueda()),
         if (_instrucciones.isNotEmpty) Positioned(bottom: 150, left: 15, right: 15, child: _construirPanelInstrucciones()),
         Positioned(bottom: 0, left: 0, right: 0, child: _construirHojaInferior()),
+        _construirBotonCentrar(), // <--- AQUÍ SE AGREGA EL BOTÓN
       ]),
     );
   }
