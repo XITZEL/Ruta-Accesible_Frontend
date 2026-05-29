@@ -1,5 +1,5 @@
 name: ruta_accesible_frontend
-description: "A new Flutter project."
+description: "App de movilidad accesible"
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -9,12 +9,22 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  http: ^1.2.0
-  google_maps_flutter: ^2.6.0
-  geolocator: ^11.0.0
-  flutter_tts: ^4.0.2
+  
+  # Navegación y Mapas
+  google_maps_flutter: ^2.9.0
   flutter_polyline_points: ^2.0.0
+  geolocator: ^13.0.1
+  
+  # Comunicación con el Backend
+  http: ^1.2.0
+  
+  # Voz y Accesibilidad
+  flutter_tts: ^4.0.2
+  speech_to_text: ^7.0.0
   flutter_dotenv: ^5.1.0
+  
+  # Iconos y Diseño
+  cupertino_icons: ^1.0.6
 
 dev_dependencies:
   flutter_test:
@@ -23,10 +33,3 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  assets:
-    - .env
-
-dependencies:
-  speech_to_text: ^7.0.0 # Para la voz
-  http: ^1.2.0
-  google_maps_flutter: ^2.9.0
